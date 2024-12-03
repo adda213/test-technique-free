@@ -63,36 +63,6 @@ resource "helm_release" "adda-nginx_ingress" {
     name = "controller.service.loadBalancerIP"
     value = scaleway_lb_ip.adda-nginx_ip.ip_address
   }
-
-  // enable proxy protocol to get client ip addr instead of loadbalancer one
-  set {
-    name = "controller.config.use-proxy-protocol"
-    value = "true"
-  }
-
-  set {
-    name = "controller.backend.service.name"
-    value = "hello-world-service"
-  }
-  set {
-    name = "controller.backend.service.port.number"
-    value = "80"
-  }
-  set {
-    name = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/scw-loadbalancer-proxy-protocol-v2"
-    value = "true"
-  }
-
-  set {
-    name = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/scw-loadbalancer-zone"
-    value = scaleway_lb_ip.adda-nginx_ip.zone
-  }
-
-
-  set {
-    name = "controller.service.externalTrafficPolicy"
-    value = "Local"
-  }
 }
  output "ip_lb" {
  value = scaleway_lb_ip.adda-nginx_ip.ip_address
@@ -141,8 +111,10 @@ resource "kubernetes_deployment" "app_deployment" {
 resource "kubernetes_service" "app_service" {
   metadata {
     name      = "hello-world-service"
+  
   }
   spec {
+    
     selector = {
       app = "hello-world"
     }
@@ -151,7 +123,35 @@ resource "kubernetes_service" "app_service" {
       port        = 80
       target_port = 80
     }
-    type = "NodePort"
+    type = "ClusterIP"
   }
 }
+resource "kubernetes_ingress_v1" "adda_ingress" {
+  metadata {
+    name = "adda-ingress"
+    annotations = {
+        "nginx.ingress.kubernetes.io/rewrite-target" = "/"
+        "kubernetes.io/ingress.class" = "nginx"
+      }
+  }
 
+  spec {
+
+      
+      rule {
+        http {
+         path {
+           path = "/"
+           backend {
+             service {
+               name = "hello-world-service"
+               port {
+                 number = 80
+               }
+             }
+           }
+        }
+      }
+    }
+  }
+}
