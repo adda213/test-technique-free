@@ -64,27 +64,7 @@ resource "helm_release" "adda-nginx_ingress" {
     value = scaleway_lb_ip.adda-nginx_ip.ip_address
   }
 
-  // enable proxy protocol to get client ip addr instead of loadbalancer one
-  set {
-    name = "controller.config.use-proxy-protocol"
-    value = "true"
-  }
 
-  set {
-    name = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/scw-loadbalancer-proxy-protocol-v2"
-    value = "true"
-  }
-
-  set {
-    name = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/scw-loadbalancer-zone"
-    value = scaleway_lb_ip.adda-nginx_ip.zone
-  }
-
-
-  set {
-    name = "controller.service.externalTrafficPolicy"
-    value = "Local"
-  }
 }
  output "ip_lb" {
  value = scaleway_lb_ip.adda-nginx_ip.ip_address
@@ -146,5 +126,34 @@ resource "kubernetes_service" "app_service" {
       target_port = 80
     }
     type = "ClusterIP"
+  }
+}
+resource "kubernetes_ingress_v1" "adda_ingress" {
+  metadata {
+    name = "adda-ingress"
+    annotations = {
+        "nginx.ingress.kubernetes.io/rewrite-target" = "/"
+        "kubernetes.io/ingress.class" = "nginx"
+      }
+  }
+
+  spec {
+
+      
+      rule {
+        http {
+         path {
+           path = "/"
+           backend {
+             service {
+               name = "hello-world-service"
+               port {
+                 number = 80
+               }
+             }
+           }
+        }
+      }
+    }
   }
 }
